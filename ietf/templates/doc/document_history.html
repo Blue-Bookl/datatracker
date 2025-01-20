@@ -11,94 +11,37 @@
     <link rel="alternate"
           type="application/atom+xml"
           href="/feed/document-changes/{{ doc.name }}/">
-    <link rel="stylesheet" href="{% static "ietf/css/list.css" %}">
+    <link rel="stylesheet" href="{% static 'ietf/css/list.css' %}">
 {% endblock %}
 {% block content %}
     {% origin %}
     {{ top|safe }}
     {% if diff_revisions and diff_revisions|length > 1 or doc.name|rfcbis %}
         <h2 class="my-3">Revision differences</h2>
-        <form class="form-horizontal diff-form"
-              action="{{ rfcdiff_base_url }}"
-              method="get"
-              target="_blank">
-            <div class="row mb-3">
-                <label for="url1" class="col-form-label col-sm-2 fw-bold">From revision</label>
-                <div class="col-sm-10">
-                    <select class="form-select select2-field" data-max-entries="1" data-minimum-input-length="0" id="url1" name="url1">
-                        {% for name, rev, time, url in diff_revisions %}
-                            <option value="{{ url }}"
-                                    {% if diff_revisions|length > 1 and forloop.counter == 2 %} selected="selected"{% endif %}>
-                                {{ name }}
-                                {% if rev %}-{{ rev }}{% endif %}
-                                ({{ time|date:"Y-m-d" }})
-                            </option>
-                        {% endfor %}
-                        {% if doc.name|rfcbis %}
-                            <option value="{{ doc.name|rfcbis }}"
-                                    {% if diff_revisions and diff_revisions|length == 1 %} selected="selected"{% endif %}>
-                                {{ doc.name|rfcbis }}
-                            </option>
-                        {% endif %}
-                    </select>
-                </div>
-            </div>
-            <div class="row mb-3">
-                <label for="url2" class="col-form-label col-sm-2 fw-bold">To revision</label>
-                <div class="col-sm-10">
-                    <select class="form-select select2-field" data-max-entries="1" data-minimum-input-length="0" id="url2" name="url2">
-                        {% for name, rev, time, url in diff_revisions %}
-                            <option value="{{ url }}"
-                                    {% if forloop.counter == 1 %} selected="selected"{% endif %}>
-                                {{ name }}
-                                {% if rev %}-{{ rev }}{% endif %}
-                                ({{ time|date:"Y-m-d" }})
-                            </option>
-                        {% endfor %}
-                        {% if doc.name|rfcbis %}
-                            <option value="{{ doc.name|rfcbis }}">
-                                {{ doc.name|rfcbis }}
-                            </option>
-                        {% endif %}
-                    </select>
-                </div>
-            </div>
-            <div class="row mb-3">
-                <label class="col-form-label col-sm-2 fw-bold">Diff format</label>
-                <div class="col-sm-10">
-                    <div class="btn-group" data-bs-toggle="buttons">
-                        <input type="radio"
-                               class="btn-check"
-                               checked
-                               name="difftype"
-                               value="--html"
-                               id="html">
-                        <label for="html" class="btn btn-outline-primary">Side-by-side</label>
-                        <input type="radio"
-                               class="btn-check"
-                               name="difftype"
-                               value="--abdiff"
-                               id="abdiff">
-                        <label for="abdiff" class="btn btn-outline-primary">Before-after</label>
-                        <input type="radio"
-                               class="btn-check"
-                               name="difftype"
-                               value="--chbars"
-                               id="chbars">
-                        <label for="chbars" class="btn btn-outline-primary">Change bars</label>
-                        <input type="radio"
-                               class="btn-check"
-                               name="difftype"
-                               value="--hwdiff"
-                               id="hwdiff">
-                        <label for="hwdiff" class="btn btn-outline-primary">Wdiff</label>
-                    </div>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-primary mb-3">Submit</button>
-        </form>
+        {% include "doc/document_history_form.html" with doc=doc diff_revisions=diff_revisions action=rfcdiff_base_url snapshot=snapshot only %}
     {% endif %}
     <h2 class="my-3">Document history</h2>
+    {% if doc.came_from_draft %}
+        <ul class="nav nav-tabs my-3">
+            <li class="nav-item">
+                <a class="nav-link active">RFC {{doc.name|slice:"3:"}}</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'ietf.doc.views_doc.document_history' name=doc.came_from_draft.name %}">{{doc.came_from_draft.name}}</a>
+            <li>
+        </ul>
+    {% endif %}
+    {% if doc.became_rfc %}
+        <ul class="nav nav-tabs my-3">
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'ietf.doc.views_doc.document_history' name=doc.became_rfc.name %}">RFC {{doc.became_rfc.name|slice:"3:"}}</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link active">{{doc.name}}</a>
+            <li>
+        </ul>
+    {% endif %}
+
     {% if can_add_comment %}
         <div class="buttonlist">
             <a class="btn btn-primary"
@@ -112,7 +55,7 @@
         <thead>
             <tr>
                 <th scope="col" data-sort="date">Date</th>
-                <th scope="col" data-sort="rev">Rev.</th>
+                {% if doc.type_id not in "rfc,bcp,std,fyi" %}<th scope="col" data-sort="rev">Rev.</th>{% endif %}
                 <th scope="col" data-sort="by">By</th>
                 <th scope="col" data-sort="action">Action</th>
             </tr>
@@ -123,7 +66,7 @@
                     <td>
                         <div title="{{ e.time|date:'Y-m-d H:i:s O' }}">{{ e.time|date:"Y-m-d" }}</div>
                     </td>
-                    <td class="text-end">{{ e.rev }}</td>
+                    {% if doc.type_id not in "rfc,bcp,std,fyi" %}<td class="text-end">{{ e.rev }}</td>{% endif %}
                     <td>{{ e.by|escape }}</td>
                     <td>{{ e.desc|format_history_text }}</td>
                 </tr>
